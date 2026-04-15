@@ -1,6 +1,6 @@
 import { ACH, ME, cntDone } from '../constants';
 
-export default function ProgressPage({ state, setState, active, pos, showToast, fullState, onGo }) {
+export default function ProgressPage({ state, setState, active, pos, showToast, fullState, onGo, deviceUserId }) {
   const getLevel = () => {
     const LVL = [
       [0, 'Seedlings 🌱'], 
@@ -71,7 +71,7 @@ export default function ProgressPage({ state, setState, active, pos, showToast, 
         <>
           <div className="sl"><span className="sli">💞</span><h3>Partner's Pulse</h3></div>
           <div className="scards" style={{ marginBottom: '16px' }}>
-            {Object.entries(fullState.profiles).filter(([id]) => id !== fullState.activeId).map(([id, p]) => (
+            {Object.entries(fullState.profiles).filter(([id]) => id !== deviceUserId).map(([id, p]) => (
               <div key={id} className="gc" style={{ padding: '16px', background: 'rgba(137, 68, 104, 0.03)', border: '1px solid var(--glass-border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                    <div>

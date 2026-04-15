@@ -10,6 +10,7 @@ import CalendarPage from './pages/CalendarPage';
 import AlarmsPage from './pages/AlarmsPage';
 import BottomNav from './components/BottomNav';
 import AlarmModal from './components/AlarmModal';
+import DeviceSetupScreen from './components/DeviceSetupScreen';
 import { ACH, cntDone } from './constants';
 
 function App() {
@@ -36,33 +37,41 @@ function App() {
     return { theme: 'light', zoom: 100, primaryColor: '#894468' };
   });
 
+  // Device identity — who owns THIS device. Never synced to cloud.
+  const [deviceUserId, setDeviceUserId] = useState(() => localStorage.getItem('hdp_device_user') || null);
+
+  // activeId — which profile is currently being viewed/edited on this device. Also local-only.
+  const [activeId, setActiveId] = useState(() => {
+    return localStorage.getItem('hdp_device_user') || 'ritesh';
+  });
+
   const [state, _setState] = useState(() => {
     const saved = localStorage.getItem('hdp_react_v1');
     if (saved) {
       const data = JSON.parse(saved);
-      if (!data.profiles) {
+      // Strip activeId from cloud data if it slipped in
+      const { activeId: _, ...rest } = data;
+      if (!rest.profiles) {
         return {
           profiles: {
-            ritesh: { ...data, name: 'Ritesh' },
+            ritesh: { ...rest, name: 'Ritesh' },
             albina: createProfile('Albina')
           },
-          activeId: 'ritesh',
-          lastDate: data.lastDate || new Date().toDateString()
+          lastDate: rest.lastDate || new Date().toDateString()
         };
       }
-      return data;
+      return rest;
     }
     return {
       profiles: {
         ritesh: createProfile('Ritesh'),
         albina: createProfile('Albina')
       },
-      activeId: 'ritesh',
       lastDate: new Date().toDateString()
     };
   });
 
-  const activeProfile = state.profiles[state.activeId];
+  const activeProfile = state.profiles[activeId];
 
   const [currentPage, setCurrentPage] = useState(0);
   const [toast, setToast] = useState({ msg: '', on: false });
@@ -75,33 +84,38 @@ function App() {
     _setState(prev => {
       const nextState = typeof updater === 'function' ? updater(prev) : updater;
       
-      // Local caching
-      localStorage.setItem('hdp_react_v1', JSON.stringify(nextState));
+      // Remove activeId before syncing/caching — it's device-local only
+      const { activeId: _, ...syncState } = nextState;
 
-      // Cloud syncing
+      // Local caching
+      localStorage.setItem('hdp_react_v1', JSON.stringify(syncState));
+
+      // Cloud syncing — never write activeId to Firebase
       if (hasFirebaseConfig && db) {
         const dRef = doc(db, 'planner', 'sharedData');
-        setDoc(dRef, nextState, { merge: true }).catch(err => console.error('Cloud Sync Error:', err));
+        setDoc(dRef, syncState, { merge: true }).catch(err => console.error('Cloud Sync Error:', err));
       }
-      return nextState;
+      return syncState;
     });
   }, []);
 
-  // Cloud Sync Listener
+  // Cloud Sync Listener — only syncs profile data, never activeId
   useEffect(() => {
     if (!hasFirebaseConfig || !db) return;
     const dRef = doc(db, 'planner', 'sharedData');
     const unsubscribe = onSnapshot(dRef, (snap) => {
-      setIsLoadingSync(false); // Stop loading on first response
+      setIsLoadingSync(false);
       if (snap.exists()) {
         const cloudData = snap.data();
         if (cloudData) {
+          // Strip activeId if it somehow exists in old cloud data
+          const { activeId: _, ...profileData } = cloudData;
           _setState(prev => {
-             // Only update if it's different to prevent infinite re-renders
-             if (JSON.stringify(prev) !== JSON.stringify(cloudData)) {
-               // Update local cache from cloud
-               localStorage.setItem('hdp_react_v1', JSON.stringify(cloudData));
-               return cloudData;
+             const prevStr = JSON.stringify({ profiles: prev.profiles, lastDate: prev.lastDate });
+             const newStr = JSON.stringify({ profiles: profileData.profiles, lastDate: profileData.lastDate });
+             if (prevStr !== newStr) {
+               localStorage.setItem('hdp_react_v1', JSON.stringify(profileData));
+               return profileData;
              }
              return prev;
           });
@@ -165,7 +179,7 @@ function App() {
     if (state.lastDate !== today) {
       setState(prev => {
         const newProfiles = { ...prev.profiles };
-        
+
         Object.keys(newProfiles).forEach(id => {
           const p = newProfiles[id];
           const done = cntDone(p);
@@ -220,14 +234,17 @@ function App() {
     }
   }, [state.lastDate]);
 
-  // Alarm Check logic for active profile
+  // Alarm Check logic — always fires for THIS DEVICE's own profile (deviceUserId),
+  // regardless of which profile is currently being viewed.
+  const deviceProfile = deviceUserId ? state.profiles[deviceUserId] : null;
   useEffect(() => {
+    if (!deviceProfile) return;
     const interval = setInterval(() => {
       const now = new Date();
       const cur = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      
+
       let triggered = false;
-      const newTasks = { ...activeProfile.tasks };
+      const newTasks = { ...deviceProfile.tasks };
       let triggeredTitle = '';
 
       Object.keys(newTasks).forEach(period => {
@@ -242,7 +259,7 @@ function App() {
         });
       });
 
-      let newCustomAlarms = [...(activeProfile.customAlarms || [])];
+      let newCustomAlarms = [...(deviceProfile.customAlarms || [])];
       newCustomAlarms = newCustomAlarms.map(a => {
         if (a.time === cur && a.enabled && !a.triggeredToday) {
           triggered = true;
@@ -254,17 +271,18 @@ function App() {
 
       if (triggered) {
         fireAlarm(triggeredTitle);
+        // Write the alarm-fired state back to the device owner's profile
         setState(prev => ({
           ...prev,
           profiles: {
             ...prev.profiles,
-            [prev.activeId]: { ...prev.profiles[prev.activeId], tasks: newTasks, customAlarms: newCustomAlarms }
+            [deviceUserId]: { ...prev.profiles[deviceUserId], tasks: newTasks, customAlarms: newCustomAlarms }
           }
         }));
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [activeProfile.tasks]);
+  }, [deviceProfile?.tasks, deviceUserId]);
 
   const fireAlarm = (title) => {
     const alMsgs = ["Time for your routine! 💖", "Hey, it's time for " + title + "! ✨", "Little reminder for you... 🌸", "A nudge for your day! 🌟"];
@@ -299,11 +317,11 @@ function App() {
           ...prev,
           profiles: {
             ...prev.profiles,
-            [prev.activeId]: {
-              ...prev.profiles[prev.activeId],
-              unlockedAchievements: [...prev.profiles[prev.activeId].unlockedAchievements, a.id],
-              score: prev.profiles[prev.activeId].score + (a.pts || 0),
-              dailyScore: (prev.profiles[prev.activeId].dailyScore || 0) + (a.pts || 0)
+            [activeId]: {
+              ...prev.profiles[activeId],
+              unlockedAchievements: [...prev.profiles[activeId].unlockedAchievements, a.id],
+              score: prev.profiles[activeId].score + (a.pts || 0),
+              dailyScore: (prev.profiles[activeId].dailyScore || 0) + (a.pts || 0)
             }
           }
         }));
@@ -312,8 +330,16 @@ function App() {
     });
   }, [activeProfile, showToast]);
 
+  // Switch profile locally — does NOT affect Firebase or the other device
   const switchProfile = (id) => {
-    setState(prev => ({ ...prev, activeId: id }));
+    setActiveId(id);
+  };
+
+  // Called once from DeviceSetupScreen to permanently assign this device
+  const handleDeviceSetup = (id) => {
+    localStorage.setItem('hdp_device_user', id);
+    setDeviceUserId(id);
+    setActiveId(id);
   };
 
   const saveName = (name) => {
@@ -342,6 +368,16 @@ function App() {
     );
   }
 
+  // One-time device setup — shown only if device identity not yet set
+  if (!deviceUserId) {
+    return (
+      <div className="app-container">
+        <div className="ambient"><div className="ab1"></div><div className="ab2"></div></div>
+        <DeviceSetupScreen onSelect={handleDeviceSetup} />
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <div className="ambient">
@@ -361,7 +397,7 @@ function App() {
                 ...prev,
                 profiles: {
                   ...prev.profiles,
-                  [prev.activeId]: typeof updater === 'function' ? updater(prev.profiles[prev.activeId]) : updater
+                  [activeId]: typeof updater === 'function' ? updater(prev.profiles[activeId]) : updater
                 }
               }))} 
               active={currentPage === 0} 
@@ -370,7 +406,8 @@ function App() {
               setActivePeriod={setActivePeriod}
               showToast={showToast}
               onSwitch={switchProfile}
-              activeId={state.activeId}
+              activeId={activeId}
+              deviceUserId={deviceUserId}
               fullState={state}
               appSettings={appSettings}
               setAppSettings={setAppSettings}
@@ -381,7 +418,7 @@ function App() {
                 ...prev,
                 profiles: {
                   ...prev.profiles,
-                  [prev.activeId]: typeof updater === 'function' ? updater(prev.profiles[prev.activeId]) : updater
+                  [activeId]: typeof updater === 'function' ? updater(prev.profiles[activeId]) : updater
                 }
               }))} 
               active={currentPage === 1}
@@ -394,7 +431,7 @@ function App() {
                 ...prev,
                 profiles: {
                   ...prev.profiles,
-                  [prev.activeId]: typeof updater === 'function' ? updater(prev.profiles[prev.activeId]) : updater
+                  [activeId]: typeof updater === 'function' ? updater(prev.profiles[activeId]) : updater
                 }
               }))} 
               active={currentPage === 2}
@@ -402,6 +439,7 @@ function App() {
               showToast={showToast}
               fullState={state}
               onGo={setCurrentPage}
+              deviceUserId={deviceUserId}
             />
             <AlarmsPage 
               state={activeProfile} 
@@ -409,7 +447,7 @@ function App() {
                 ...prev,
                 profiles: {
                   ...prev.profiles,
-                  [prev.activeId]: typeof updater === 'function' ? updater(prev.profiles[prev.activeId]) : updater
+                  [activeId]: typeof updater === 'function' ? updater(prev.profiles[activeId]) : updater
                 }
               }))} 
               active={currentPage === 3}
@@ -422,7 +460,7 @@ function App() {
                 ...prev,
                 profiles: {
                   ...prev.profiles,
-                  [prev.activeId]: typeof updater === 'function' ? updater(prev.profiles[prev.activeId]) : updater
+                  [activeId]: typeof updater === 'function' ? updater(prev.profiles[activeId]) : updater
                 }
               }))} 
               active={currentPage === 4}

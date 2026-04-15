@@ -1,4 +1,4 @@
-export default function ProfileSwitcher({ activeId, onSwitch, profiles }) {
+export default function ProfileSwitcher({ activeId, onSwitch, profiles, deviceUserId }) {
   return (
     <div className="pswitch">
       <button 
@@ -7,6 +7,7 @@ export default function ProfileSwitcher({ activeId, onSwitch, profiles }) {
       >
         <span className="psw-dot ritesh"></span>
         Ritesh
+        {deviceUserId === 'ritesh' && <span className="psw-you">you</span>}
       </button>
       <button 
         className={`psw-btn ${activeId === 'albina' ? 'on' : ''}`} 
@@ -14,6 +15,7 @@ export default function ProfileSwitcher({ activeId, onSwitch, profiles }) {
       >
         <span className="psw-dot albina"></span>
         Albina
+        {deviceUserId === 'albina' && <span className="psw-you">you</span>}
       </button>
     </div>
   );
