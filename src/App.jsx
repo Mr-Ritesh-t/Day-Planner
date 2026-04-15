@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { db, hasFirebaseConfig } from './firebase';
+import { db, hasFirebaseConfig, requestFCMToken } from './firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import './index.css';
 import PlannerPage from './pages/PlannerPage';
@@ -128,12 +128,21 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Request Native Notifications
+  // Request FCM push permission and save device token to Firestore
+  // This allows the Cloud Function to send alarms to THIS specific device
   useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
+    if (!deviceUserId) return; // wait until device identity is set
+    const registerPush = async () => {
+      const token = await requestFCMToken();
+      if (token && db) {
+        const deviceRef = doc(db, 'devices', deviceUserId);
+        setDoc(deviceRef, { fcmToken: token, userId: deviceUserId, updatedAt: Date.now() }, { merge: true })
+          .then(() => console.log(`✅ FCM token saved for ${deviceUserId}`))
+          .catch(err => console.error('FCM token save failed:', err));
+      }
+    };
+    registerPush();
+  }, [deviceUserId]);
 
   useEffect(() => {
     localStorage.setItem('hdp_react_settings', JSON.stringify(appSettings));
