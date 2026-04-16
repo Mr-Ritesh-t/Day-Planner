@@ -59,6 +59,7 @@ export default function AlarmsPage({ state, setState, active, pos, showToast }) 
 
       <div className="ncompose" style={{ marginBottom: '24px' }}>
         <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '12px', fontWeight: 600 }}>Create New Alarm</p>
+        <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginBottom: '12px', fontWeight: 600 }}>Set time</p>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input 
             type="time" 
