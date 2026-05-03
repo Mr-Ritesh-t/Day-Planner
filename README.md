@@ -1,17 +1,62 @@
-# React + Vite
+# Couple's Study Sanctuary / Day-Planner
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A cross-platform productivity and academic planning application built for couples and study partners. Designed to help users manage their academic life, track progress, collaborate, and manage their time effectively.
 
-Currently, two official plugins are available:
+## 📱 Tech Stack
+- **Frontend Framework:** React 19 with Vite
+- **Native Wrapper:** Capacitor v8 (transforms the web app into a native Android app)
+- **Backend & Database:** Firebase v12 (Hosting, Cloud Functions, Firestore/Auth)
+- **Linting:** ESLint v9
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ✨ Key Features
 
-## React Compiler
+### ⏱️ Time Management & Focus
+- **Pomodoro Timer:** Built-in timer for the Pomodoro study technique.
+- **Focus Tracker:** Tracks deep focus sessions.
+- **Exam Countdown:** Visual countdowns for upcoming important dates.
+- **Native Alarms:** System-level native Android alarms and local notifications using Capacitor.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 📚 Academic Tracking
+- **Coursework Management:** Tools to track assignments and syllabi.
+- **Timetable:** Manage daily school or college schedules.
+- **Goal Setting:** Weekly goals and retrospective reports.
 
-## Expanding the ESLint configuration
+### 🤝 Collaboration (Couples Features)
+- **Shared Whiteboard:** Real-time collaborative space for both partners.
+- **Study Leaderboard:** Gamified tracking between users.
+- **Profile Switcher:** Easily switch between couple's profiles or a shared view.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-"# Day-Planner" 
+### 🧘 Wellness & AI
+- **Mood & Energy Log:** Track daily well-being.
+- **AI Study Tips:** Integrated AI-generated tips to optimize studying.
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js installed
+- Android Studio (for native Android builds)
+
+### Installation
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Run the web development server:
+   ```bash
+   npm run dev
+   ```
+
+### Building for Android
+1. Build the web assets:
+   ```bash
+   npm run build
+   ```
+2. Sync with Capacitor:
+   ```bash
+   npx cap sync android
+   ```
+3. Open in Android Studio:
+   ```bash
+   npx cap open android
+   ```

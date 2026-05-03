@@ -90,9 +90,9 @@ export default function MonthlyPlannerModal({ isOpen, onClose, state, setState }
   return (
     <div className={`alovo ${isOpen ? 'open' : ''}`}>
       <div className="albx" style={{ maxHeight: '85vh', overflowY: 'auto', textAlign: 'left', padding: '32px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-          <div className="ph-t" style={{ fontSize: '24px' }}>{state.name}'s <em>Routine</em></div>
-          <button className="bico" onClick={onClose} style={{ width: '32px', height: '32px', fontSize: '14px' }}>✕</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', gap: '100px' }}>
+          <div className="ph-t" style={{ fontSize: '24px', flex: 1 }}>{state.name}'s <em>Routine</em></div>
+          <button className="bico" onClick={onClose} style={{ width: '36px', height: '36px', fontSize: '14px', flexShrink: 0 }}>✕</button>
         </div>
         <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '24px', lineHeight: '1.6' }}>
           These recurring rituals will be added to your daily plan every single morning. ✨
@@ -127,16 +127,16 @@ export default function MonthlyPlannerModal({ isOpen, onClose, state, setState }
             placeholder="About Task 📝" 
             style={{ marginBottom: '12px', fontSize: '12px' }}
           />
-          
+          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '8px', fontWeight: 800, textTransform: 'uppercase', opacity: 0.6 }}>Set Time</div>
           <div className="irow" style={{ marginTop: 0 }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '8px', fontWeight: 800, textTransform: 'uppercase', opacity: 0.6 }}>Set Time</div>
+            
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                <input placeholder="Starting" className="inp" type={tTime ? "time" : "text"} onFocus={(e) => e.target.type='time'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} value={tTime} onChange={e => setTTime(e.target.value)} style={{ width: '85px', fontSize: '12px' }} />
                <span style={{ fontSize: '11px', opacity: 0.4 }}>to</span>
                <input placeholder="Ending" className="inp" type={tEndTime ? "time" : "text"} onFocus={(e) => e.target.type='time'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} value={tEndTime} onChange={e => setTEndTime(e.target.value)} style={{ width: '85px', fontSize: '12px' }} />
             </div>
-            <button className={`fab-add ${tInp.trim() ? 'ready' : ''}`} style={{marginTop:15}} onClick={addTask}>Done</button>
           </div>
+            <button className={`fab-add ${tInp.trim() ? 'ready' : ''}`} style={{marginTop:15}} onClick={addTask}>Done</button>
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '16px -20px' }} />
 
@@ -166,7 +166,7 @@ export default function MonthlyPlannerModal({ isOpen, onClose, state, setState }
           </div>
         </div>
 
-        <div className="tcards" style={{ padding: 0 }}>
+        <div className="tcards" style={{ padding: 0,width:'100%' }}>
           {!routine[activePeriod].length ? (
             <div className="empty" style={{ padding: '24px 0' }}>No rituals set for this time.</div>
           ) : (

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import FocusTracker from '../components/FocusTracker';
+import SharedWhiteboard from '../components/SharedWhiteboard';
 
 const DEFAULT_TAGS = { dream: '✨', date: '🍷', love: '💖', memo: '💌' };
 const DOT_COLORS = ['var(--primary)', 'var(--secondary)', '#e28743', '#5da9e9', '#9b59b6', '#27ae60'];
@@ -156,6 +157,7 @@ export default function NotesPage({ state, setState, active, pos, showToast }) {
         )}
       </div>
 
+      <SharedWhiteboard activeProfile={state} />
       <FocusTracker state={state} setState={setState} showToast={showToast} />
 
       <div className="sl">

@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { MSGS, ME } from '../constants';
+import { MSGS } from '../constants';
 import MonthlyPlannerModal from '../components/MonthlyPlannerModal';
 import ProfileSwitcher from '../components/ProfileSwitcher';
 import SettingsModal from '../components/SettingsModal';
+import ExamCountdown from '../components/ExamCountdown';
+import AssignmentTracker from '../components/AssignmentTracker';
+import MoodEnergyLog from '../components/MoodEnergyLog';
+import Timetable from '../components/Timetable';
 
-export default function PlannerPage({ state, setState, active, pos, activePeriod, setActivePeriod, showToast, onSwitch, activeId, fullState, appSettings, setAppSettings }) {
+export default function PlannerPage({ state, setState, active, pos, activePeriod, setActivePeriod, showToast, onSwitch, activeId, fullState, appSettings, setAppSettings, userData, partnerData }) {
   const [tInp, setTInp] = useState('');
   const [tNote, setTNote] = useState('');
   const [tTime, setTTime] = useState('');
@@ -13,6 +17,7 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
   const [msgIdx, setMsgIdx] = useState(() => Math.floor(Math.random() * MSGS.length));
   const [showMorePeriod, setShowMorePeriod] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
 
   useEffect(() => {
     setShowMorePeriod(false);
@@ -45,6 +50,7 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
       tasks: { ...prev.tasks, [targetPeriod]: [...(prev.tasks[targetPeriod] || []), newTask] }
     }));
     setTInp(''); setTNote(''); setTTime(''); setTEndTime('');
+    setShowAdd(false);
     showToast('Task added 🌸');
   };
 
@@ -107,13 +113,13 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
   };
 
   const togHabit = (id) => {
-    const habits = state.habits.map(h => {
+    const habits = (state?.habits || []).map(h => {
       if (h.id === id) {
         const newDone = !h.done;
         const pts = newDone ? 1 : -1;
         setState(prev => ({ 
           ...prev, 
-          score: Math.max(0, prev.score + pts),
+          score: Math.max(0, (prev.score || 0) + pts),
           dailyScore: Math.max(0, (prev.dailyScore || 0) + pts)
         }));
         if (newDone) showToast(h.n + ' done! +1 ⭐');
@@ -124,24 +130,15 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
     setState(prev => ({ ...prev, habits }));
   };
 
-  const setMood = (m) => {
-    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const newHist = [...state.moodHist];
-    const exIdx = newHist.findIndex(x => x.date === today);
-    if (exIdx !== -1) newHist[exIdx].mood = m;
-    else {
-      newHist.push({ date: today, mood: m });
-      if (newHist.length > 7) newHist.shift();
-    }
-    setState(prev => ({ ...prev, mood: m, moodHist: newHist }));
-    showToast('Mood saved 💖');
-  };
 
-  const cntTasksDone = Object.values(state.tasks).flat().filter(t => t.done).length;
-  const totalTasks = Object.values(state.tasks).flat().length;
 
-  const allTasks = ['anytime', 'morning', 'afternoon', 'evening'].flatMap(p => state.tasks[p] || []);
-  const displayedTasks = activePeriod === 'all' ? allTasks : [...(state.tasks['anytime'] || []), ...(state.tasks[activePeriod] || [])];
+
+  const tasks = state?.tasks || { anytime: [], morning: [], afternoon: [], evening: [] };
+  const cntTasksDone = Object.values(tasks).flat().filter(t => t?.done).length;
+  const totalTasks = Object.values(tasks).flat().length;
+
+  const allTasks = ['anytime', 'morning', 'afternoon', 'evening'].flatMap(p => tasks[p] || []);
+  const displayedTasks = activePeriod === 'all' ? allTasks : [...(tasks['anytime'] || []), ...(tasks[activePeriod] || [])];
 
   const sortedDisplayedTasks = [...displayedTasks].sort((a, b) => {
     if (a.done && !b.done) return -1;
@@ -180,33 +177,19 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
 
       <div className="hero-strip">
         <div className="hl2">
-          <h2>{state.name} 😝</h2>
+          <h2>{state?.name || 'Sanctuary'} 😝</h2>
           <p>{totalTasks ? `Growing together: ${cntTasksDone}/${totalTasks} done` : "Let's capture the day"}</p>
         </div>
         <div className="hstats" style={{ display: 'flex', gap: '8px' }}>
-          <div className="hst"><div className="hst-v">{state.dailyScore || 0}</div><div className="hst-l">Today Points</div></div>
+          <div className="hst"><div className="hst-v">{state?.dailyScore || 0}</div><div className="hst-l">Today Points</div></div>
         </div>
       </div>
 
-      <div className="add-box" style={{borderRadius:10}}>
-        <input 
-          className="inp" 
-          value={tInp} 
-          onChange={e => setTInp(e.target.value)} 
-          placeholder="Add Your Own task" 
-          onKeyDown={e => e.key === 'Enter' && addTask()}
-        />
-        <div className="irow" style={{ marginTop: '12px' }}>
-          <input className="inp" value={tNote} onChange={e => setTNote(e.target.value)} placeholder="About Your Task" />
-          <span style={{ fontSize: '12px',marginLeft:'10px',marginTop:'20px' ,marginBottom:'10px'}}>Set Time</span>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-             <input placeholder='Starting' className="inp" type={tTime ? "time" : "text"} onFocus={(e) => e.target.type='time'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} value={tTime} onChange={e => setTTime(e.target.value)} style={{ width: '90px' }} />
-             <span style={{ fontSize: '12px', opacity: 0.4 }}>to</span>
-             <input placeholder='Ending' className="inp" type={tEndTime ? "time" : "text"} onFocus={(e) => e.target.type='time'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} value={tEndTime} onChange={e => setTEndTime(e.target.value)} style={{ width: '90px' }} />
-          </div >
-          <button className={`fab-add ${tInp.trim() ? 'ready' : ''}`} onClick={addTask}>Done</button>
-        </div>
-      </div>
+      {/* Exam countdown banners + assignment alerts */}
+      <ExamCountdown state={state} setState={setState} showToast={showToast} compact />
+      <AssignmentTracker state={state} setState={setState} showToast={showToast} compact />
+
+
 
       <div className="period-row" >
         {['all', 'morning', 'afternoon', 'evening'].map(p => (
@@ -259,10 +242,10 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
       <div className="sl">
         <span className="sli">🌸</span>
         <h3>Our Today Tasks</h3>
-        <span className="slc">{state.habits.filter(h => h.done).length}/{state.habits.length}</span>
+        <span className="slc">{(state?.habits || []).filter(h => h.done).length}/{(state?.habits || []).length}</span>
       </div>
       <div className="hrow">
-        {state.habits.map(h => (
+        {(state?.habits || []).map(h => (
           <div key={h.id} className={`hpill ${h.done ? 'on' : ''}`} onClick={() => togHabit(h.id)}>
             <span className="he">{h.e}</span>
             <span>{h.n}</span>
@@ -270,7 +253,7 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
           </div>
         ))}
       </div>
-       <div className="tcards" style={{ marginTop: '16px' }}>
+      <div className="tcards" style={{ marginTop: '16px' }}>
         {!allTasks.length ? (
           <div className="empty">
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>🌈</div>
@@ -301,19 +284,46 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
         )}
       </div>
 
-      <div className="sl"><span className="sli">💝</span><h3>How are you feeling?</h3></div>
-      <div className="mstrip">
-        {Object.entries(ME).map(([key, emoji]) => (
+      {!showAdd ? (
+        <button 
+          className="fab-add ready" 
+          onClick={() => setShowAdd(true)}
+          style={{ width: '95%', margin: '20px auto 10px', display: 'flex' }}
+        >
+          + Add New Task
+        </button>
+      ) : (
+        <div className="add-box" style={{ borderRadius: 10, margin: '10px' }}>
+          <input 
+            className="inp" 
+            value={tInp} 
+            onChange={e => setTInp(e.target.value)} 
+            placeholder="Add Your Own task" 
+            onKeyDown={e => e.key === 'Enter' && addTask()}
+            autoFocus
+          />
+          <input className="inp" value={tNote} onChange={e => setTNote(e.target.value)} placeholder="About Your Task" />
+          <span style={{ fontSize: '12px', marginLeft: '10px', marginTop: '20px', marginBottom: '10px' }}>Set Time</span>
+          <div className="irow" style={{ marginTop: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input placeholder='Starting' className="inp" type={tTime ? "time" : "text"} onFocus={(e) => e.target.type='time'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} value={tTime} onChange={e => setTTime(e.target.value)} style={{ width: '90px' }} />
+              <span style={{ fontSize: '12px', opacity: 0.4 }}>to</span>
+              <input placeholder='Ending' className="inp" type={tEndTime ? "time" : "text"} onFocus={(e) => e.target.type='time'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} value={tEndTime} onChange={e => setTEndTime(e.target.value)} style={{ width: '90px' }} />
+            </div >
+          </div>
+          <button className={`fab-add ${tInp.trim() ? 'ready' : ''}`} onClick={addTask}>Done</button>
           <button 
-            key={key} 
-            className={`mbtn ${state.mood === key ? 'on' : ''}`} 
-            onClick={() => setMood(key)}
+            onClick={() => setShowAdd(false)} 
+            style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: '12px', marginTop: '4px', padding: '8px', fontWeight: 600, cursor: 'pointer' }}
           >
-            <div className="mmi">{emoji}</div>
-            <div className="mml">{key}</div>
+            Cancel
           </button>
-        ))}
-      </div>
+        </div>
+      )}
+
+
+      {/* Enhanced Mood + Energy check-in */}
+      <MoodEnergyLog state={state} setState={setState} showToast={showToast} />
 
       <div className="mot">
         <div className="mi">{MSGS[msgIdx].i}</div>
@@ -332,6 +342,9 @@ export default function PlannerPage({ state, setState, active, pos, activePeriod
         onClose={() => setShowSettings(false)} 
         appSettings={appSettings} 
         setAppSettings={setAppSettings} 
+        userData={userData}
+        partnerData={partnerData}
+        showToast={showToast}
       />
     </div>
   );

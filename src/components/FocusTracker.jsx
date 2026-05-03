@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PomodoroTimer from './PomodoroTimer';
 
 export default function FocusTracker({ state, setState, showToast }) {
   const [sInp, setSInp] = useState('');
@@ -18,7 +19,7 @@ export default function FocusTracker({ state, setState, showToast }) {
   }, [activeTimerIdx, timerStart]);
 
   const startTimer = (idx) => {
-    if (activeTimerIdx !== null) stopTimer(); // Auto-stop previous
+    if (activeTimerIdx !== null) stopTimer();
     setActiveTimerIdx(idx);
     setTimerStart(Date.now());
     setElapsed(0);
@@ -28,19 +29,19 @@ export default function FocusTracker({ state, setState, showToast }) {
     if (activeTimerIdx === null) return;
     const secs = elapsed;
     const idx = activeTimerIdx;
-    
+
     setActiveTimerIdx(null);
     setTimerStart(null);
     setElapsed(0);
 
-    let reason = prompt('Reason for stopping (e.g., Finished, finished subject)?', 'Break');
+    let reason = prompt('Reason for stopping (e.g., Finished, Break)?', 'Break');
     if (reason === null) reason = 'Stopped';
 
     const newSubjects = [...state.subjects];
     newSubjects[idx].done += secs;
     if (!newSubjects[idx].logs) newSubjects[idx].logs = [];
-    newSubjects[idx].logs.push({ secs, reason, date: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
-    
+    newSubjects[idx].logs.push({ secs, reason, date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+
     let bonus = 0;
     const goalSecs = newSubjects[idx].goal * 60;
     if (newSubjects[idx].done >= goalSecs && (newSubjects[idx].done - secs) < goalSecs) {
@@ -50,10 +51,12 @@ export default function FocusTracker({ state, setState, showToast }) {
       showToast(`Logged ${secs}s for ${newSubjects[idx].name} ✨`);
     }
 
-    setState(prev => ({ 
-      ...prev, 
-      subjects: newSubjects, 
-      studyMins: prev.studyMins + Math.max(1, Math.round(secs / 60)),
+    const addedMins = Math.max(1, Math.round(secs / 60));
+    setState(prev => ({
+      ...prev,
+      subjects: newSubjects,
+      studyMins: prev.studyMins + addedMins,
+      weekStudyMins: (prev.weekStudyMins || 0) + addedMins,
       score: prev.score + bonus,
       dailyScore: (prev.dailyScore || 0) + bonus
     }));
@@ -70,7 +73,7 @@ export default function FocusTracker({ state, setState, showToast }) {
     if (!name) return;
     const goal = typeof overrideGoal === 'number' ? overrideGoal : parseInt(sGoal) || 60;
     const newSubj = { id: Date.now(), name, goal, done: 0 };
-    
+
     setState(prev => {
       const prevRecents = prev.recentSubjects || [];
       const filteredRecents = prevRecents.filter(r => r.name.toLowerCase() !== name.toLowerCase());
@@ -81,7 +84,7 @@ export default function FocusTracker({ state, setState, showToast }) {
         recentSubjects: newRecents
       };
     });
-    
+
     if (typeof overrideName !== 'string') {
       setSInp(''); setSGoal('');
     }
@@ -91,7 +94,7 @@ export default function FocusTracker({ state, setState, showToast }) {
   const logStudy = (idx) => {
     const m = prompt('Minutes studied?', '30');
     if (!m || isNaN(+m) || +m <= 0) return;
-    
+
     let reason = prompt('What did you work on?', 'Manual log');
     if (reason === null) reason = 'Manual log';
 
@@ -99,8 +102,8 @@ export default function FocusTracker({ state, setState, showToast }) {
     const newSubjects = [...state.subjects];
     newSubjects[idx].done += secs;
     if (!newSubjects[idx].logs) newSubjects[idx].logs = [];
-    newSubjects[idx].logs.push({ mins: +m, reason, date: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
-    
+    newSubjects[idx].logs.push({ mins: +m, reason, date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+
     let bonus = 0;
     const goalSecs = newSubjects[idx].goal * 60;
     if (newSubjects[idx].done >= goalSecs && (newSubjects[idx].done - secs) < goalSecs) {
@@ -108,10 +111,11 @@ export default function FocusTracker({ state, setState, showToast }) {
       showToast(newSubjects[idx].name + ' goal! +5 ⭐');
     }
 
-    setState(prev => ({ 
-      ...prev, 
-      subjects: newSubjects, 
+    setState(prev => ({
+      ...prev,
+      subjects: newSubjects,
       studyMins: prev.studyMins + (+m),
+      weekStudyMins: (prev.weekStudyMins || 0) + (+m),
       score: prev.score + bonus,
       dailyScore: (prev.dailyScore || 0) + bonus
     }));
@@ -129,6 +133,14 @@ export default function FocusTracker({ state, setState, showToast }) {
         <span className="slc">{state.subjects.length} Task</span>
       </div>
       <div className="scards">
+        {/* Pomodoro Timer */}
+        <PomodoroTimer
+          state={state}
+          setState={setState}
+          showToast={showToast}
+          subjects={state.subjects}
+        />
+
         <div className="add-box" style={{ margin: 0, padding: '16px' }}>
           <div className="irow" style={{ marginTop: 0 }}>
             <input className="inp" value={sInp} onChange={e => setSInp(e.target.value)} placeholder="What are we focusing on? 📚" />
@@ -139,9 +151,9 @@ export default function FocusTracker({ state, setState, showToast }) {
             <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-dim)', alignSelf: 'center' }}>Recent:</span>
               {state.recentSubjects.map((r, i) => (
-                <button 
-                  key={i} 
-                  className="slogbtn" 
+                <button
+                  key={i}
+                  className="slogbtn"
                   style={{ background: 'var(--surface-container-low)', color: 'var(--text-dim)', padding: '4px 10px', fontSize: '11px', border: '1px solid var(--glass-border)', cursor: 'pointer' }}
                   onClick={() => addSubject(r.name, r.goal)}
                 >
@@ -155,7 +167,7 @@ export default function FocusTracker({ state, setState, showToast }) {
           const goalSecs = s.goal * 60;
           const pct = Math.min(100, Math.round((s.done / goalSecs) * 100));
           return (
-            <div key={s.id} className="sci" style={{marginTop:10}}>
+            <div key={s.id} className="sci" style={{ marginTop: 10 }}>
               <div className="scit">
                 <span className="scin">{s.name} : </span>
                 <span className="scip">{pct}% · {Math.floor(s.done / 60)}m {s.done % 60}s / {s.goal}m</span>
@@ -169,7 +181,7 @@ export default function FocusTracker({ state, setState, showToast }) {
                 ) : (
                   <button className="slogbtn" onClick={() => startTimer(i)}>▶ Start</button>
                 )}
-                <button className="slogbtn" onClick={() => logStudy(i)} style={{background: 'var(--surface-container-low)', color: 'var(--text-dim)'}}>+ Manual</button>
+                <button className="slogbtn" onClick={() => logStudy(i)} style={{ background: 'var(--surface-container-low)', color: 'var(--text-dim)' }}>+ Manual</button>
                 <button className="sdelbtn" style={{ marginLeft: 'auto' }} onClick={() => delSubj(i)}>✕</button>
               </div>
               {s.logs && s.logs.length > 0 && (
