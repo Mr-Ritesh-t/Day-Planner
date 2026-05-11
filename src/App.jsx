@@ -11,6 +11,9 @@ import WelcomeScreen from './components/WelcomeScreen';
 import AuthPage from './pages/AuthPage';
 import CalendarPage from './pages/CalendarPage';
 import AlarmsPage from './pages/AlarmsPage';
+import ScreenTimePage from './pages/ScreenTimePage';
+import AiAssistantPage from './pages/AiAssistantPage';
+
 import BottomNav from './components/BottomNav';
 import AlarmModal from './components/AlarmModal';
 import WeeklyReport from './components/WeeklyReport';
@@ -52,6 +55,26 @@ function App() {
     targetNotifiedToday: false,
     accountStatus: 'Healthy',
     blockedUsers: [],
+    focusSession: {
+      isActive: false,
+      phase: 'IDLE', // IDLE, WORK, BREAK
+      startTime: null,
+      subjectId: null,
+      settings: {
+        workMins: 25,
+        breakMins: 5,
+        isStrict: false,
+        youtubeMode: false,
+        browserMode: false,
+        musicType: 'none'
+      },
+      stats: {
+        elapsedSecs: 0,
+        distractions: []
+      }
+    },
+    blockedApps: ['Instagram', 'Snapchat', 'TikTok'],
+    allowedApps: ['Calculator', 'Phone', 'Clock', 'Calendar'],
     tasks: { anytime: [], morning: [], afternoon: [], evening: [] },
     monthlyRoutine: { anytime: [], morning: [], afternoon: [], evening: [] },
     habits: [
@@ -123,6 +146,12 @@ function App() {
   }, []);
 
   // Listen to OWN data
+  useEffect(() => {
+    const handleNav = (e) => setCurrentPage(e.detail);
+    window.addEventListener('navTo', handleNav);
+    return () => window.removeEventListener('navTo', handleNav);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     console.log('📡 Starting profile listener for:', user.uid);
@@ -563,6 +592,25 @@ function App() {
               pos={currentPage === 4 ? 'act' : 'hl'}
               fullState={state}
             />
+            <ScreenTimePage 
+              state={activeProfile} 
+              setState={setState}
+              active={currentPage === 5}
+              pos={currentPage === 5 ? 'act' : 'hl'}
+              showToast={showToast}
+              activeId={activeId}
+              onSwitch={setActiveId}
+              deviceUserId={user.uid}
+              fullState={state}
+            />
+            <AiAssistantPage 
+              state={activeProfile} 
+              setState={setState}
+              active={currentPage === 6}
+              pos={currentPage === 6 ? 'act' : 'hl'}
+              showToast={showToast}
+            />
+
           </div>
 
           <BottomNav
@@ -574,6 +622,32 @@ function App() {
           />
 
           <AlarmModal alarm={alarm} onClose={() => setAlarm(prev => ({ ...prev, open: false }))} />
+          
+          {/* Focus Overlay */}
+          {(activeProfile?.isStrictMode || activeProfile?.youtubeStudyMode || activeProfile?.browserStudyMode) && (
+            <div style={{
+              position: 'fixed',
+              top: '12px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(0,0,0,0.8)',
+              backdropFilter: 'blur(10px)',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              zIndex: 10000,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              pointerEvents: 'none'
+            }}>
+              <div className="pulse-dot" style={{ width: '8px', height: '8px', background: '#4caf50', borderRadius: '50%' }} />
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                {activeProfile.isStrictMode ? 'Strict Mode' : activeProfile.youtubeStudyMode ? 'YouTube Mode' : 'Browser Mode'} Active
+              </span>
+            </div>
+          )}
           
           {showReport && (
             <WeeklyReport

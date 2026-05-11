@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const PHASES = ['work', 'shortBreak', 'longBreak'];
 const PHASE_LABELS = { work: '🍅 Focus', shortBreak: '☕ Short Break', longBreak: '🌿 Long Break' };
@@ -15,6 +16,10 @@ export default function PomodoroTimer({ state, setState, showToast, subjects }) 
   const [showSettings, setShowSettings] = useState(false);
   const [tempSettings, setTempSettings] = useState(settings);
   const intervalRef = useRef(null);
+
+  useEffect(() => {
+    LocalNotifications.requestPermissions();
+  }, []);
 
   const totalSecs = settings[phase] * 60;
   const progress = 1 - secondsLeft / totalSecs;
@@ -88,6 +93,7 @@ export default function PomodoroTimer({ state, setState, showToast, subjects }) 
   };
 
   const playChime = () => {
+    // Web Chime
     try {
       const c = new (window.AudioContext || window.webkitAudioContext)();
       [880, 660, 880].forEach((f, i) => {
@@ -101,6 +107,18 @@ export default function PomodoroTimer({ state, setState, showToast, subjects }) 
         o.stop(c.currentTime + i * 0.3 + 0.3);
       });
     } catch (e) {}
+
+    // Android Notification
+    LocalNotifications.schedule({
+      notifications: [
+        {
+          title: phase === 'work' ? 'Focus Session Done! 🍅' : 'Break Over! ☕',
+          body: phase === 'work' ? 'Time for a well-deserved break.' : 'Back to deep focus!',
+          id: 1,
+          sound: 'default'
+        }
+      ]
+    });
   };
 
   const reset = () => {

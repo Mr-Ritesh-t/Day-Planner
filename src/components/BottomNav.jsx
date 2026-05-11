@@ -36,6 +36,12 @@ export default function BottomNav({ current, onGo, noteCount, examCount, assignm
             </span>
           )}
         </div>
+        <div className={`nitem ${current === 6 ? 'on' : ''}`} onClick={() => onGo(6)}>
+          <div className="npill" style={{ background: 'var(--primary)', opacity: current === 6 ? 0.1 : 0 }}></div>
+          <div className="ni">🤖</div>
+          <div className="nl">Era</div>
+        </div>
+
       </div>
     </nav>
   );

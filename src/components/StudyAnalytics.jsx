@@ -25,10 +25,12 @@ export default function StudyAnalytics({ state, fullState }) {
     const barAreaH = H - 50;
 
     subjects.forEach((s, i) => {
-      const mins = Math.floor(s.done / 60);
+      const mins = Math.floor(s.done / 60) || 0;
       const barH = (mins / maxMins) * barAreaH;
       const x = 30 + i * ((W - 60) / subjects.length) + ((W - 60) / subjects.length - barW) / 2;
       const y = barAreaH - barH + 10;
+
+      if (!isFinite(x) || !isFinite(y) || !isFinite(barW) || !isFinite(barH)) return;
 
       // Bar fill
       const grad = ctx.createLinearGradient(0, y, 0, barAreaH + 10);
@@ -69,6 +71,8 @@ export default function StudyAnalytics({ state, fullState }) {
 
     subjects.forEach((s, i) => {
       const slice = (s.done / total) * 2 * Math.PI;
+      if (!isFinite(slice) || slice <= 0) return;
+      
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, r, startAngle, startAngle + slice);

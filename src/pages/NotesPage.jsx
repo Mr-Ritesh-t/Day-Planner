@@ -1,45 +1,33 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import FocusTracker from '../components/FocusTracker';
 import SharedWhiteboard from '../components/SharedWhiteboard';
 
-const DEFAULT_TAGS = { dream: '✨', date: '🍷', love: '💖', memo: '💌' };
 const DOT_COLORS = ['var(--primary)', 'var(--secondary)', '#e28743', '#5da9e9', '#9b59b6', '#27ae60'];
-const CLR = ['c0', 'c1', 'c2', 'c3'];
-
-const EMOJI_OPTIONS = ['✨','💖','🍷','💌','🌸','🌟','🔥','📚','🎵','🌙','☀️','🧠','🏆','🎯','💡','🌈','🍀','❤️','🤍','💜','💙','🧡','💛','💚','🐱','🐶','🌺','🦋','🎨','📝'];
 
 export default function NotesPage({ state, setState, active, pos, showToast }) {
   const [nArea, setNArea] = useState('');
-  const [ntag, setNtag] = useState('dream');
+  const [activeSubject, setActiveSubject] = useState('General');
   const [viewNote, setViewNote] = useState(null);
+  const [filterSubject, setFilterSubject] = useState('All');
 
-  // Custom tag creator state
-  const [addingTag, setAddingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
-  const [newTagEmoji, setNewTagEmoji] = useState('✨');
-  const tagInputRef = useRef(null);
-
-  // Merge default tags with custom tags saved in profile
-  const customTags = state.customTags || {};
-  const allTags = { ...DEFAULT_TAGS, ...customTags };
-
-  const getDotColor = (key) => {
-    const i = Object.keys(allTags).indexOf(key);
-    return DOT_COLORS[i % DOT_COLORS.length];
-  };
+  const subjects = useMemo(() => {
+    const list = state.noteSubjects || ['General'];
+    if (!list.includes('General')) return ['General', ...list];
+    return list;
+  }, [state.noteSubjects]);
 
   const saveNote = () => {
     if (!nArea.trim()) { showToast('Write something first 🌸'); return; }
     const newNote = {
       id: Date.now(),
       text: nArea.trim(),
-      tag: ntag,
+      subject: activeSubject,
       pinned: false,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     };
     setState(prev => ({ ...prev, notes: [newNote, ...prev.notes] }));
     setNArea('');
-    showToast('Note saved 💾');
+    showToast(`Note saved to ${activeSubject} 💾`);
   };
 
   const delNote = (e, id) => {
@@ -55,149 +43,127 @@ export default function NotesPage({ state, setState, active, pos, showToast }) {
     }));
   };
 
-  const saveCustomTag = () => {
-    const name = newTagName.trim().toLowerCase().replace(/\s+/g, '-');
-    if (!name) { showToast('Enter a tag name 🌸'); return; }
-    if (allTags[name]) { showToast('Tag already exists!'); return; }
+  const addSubject = () => {
+    const name = prompt("Enter new note subject:");
+    if (!name) return;
+    if (subjects.includes(name)) { showToast('Subject already exists! 🌸'); return; }
+    setState(prev => ({ ...prev, noteSubjects: [...(prev.noteSubjects || []), name] }));
+    setActiveSubject(name);
+    showToast(`Note subject "${name}" added! 📚`);
+  };
+
+  const removeSubject = (sub) => {
+    if (sub === 'General') return;
+    if (!confirm(`Remove subject "${sub}"? Notes will be moved to General.`)) return;
+    
     setState(prev => ({
       ...prev,
-      customTags: { ...(prev.customTags || {}), [name]: newTagEmoji }
+      noteSubjects: (prev.noteSubjects || []).filter(s => s !== sub),
+      notes: (prev.notes || []).map(n => n.subject === sub ? { ...n, subject: 'General' } : n)
     }));
-    setNtag(name);
-    setNewTagName('');
-    setNewTagEmoji('✨');
-    setAddingTag(false);
-    showToast(`Tag "${newTagEmoji} ${name}" created! 🎉`);
+    
+    if (activeSubject === sub) setActiveSubject('General');
+    if (filterSubject === sub) setFilterSubject('All');
+    showToast(`Subject "${sub}" removed`);
   };
 
-  const deleteCustomTag = (key) => {
-    setState(prev => {
-      const { [key]: _, ...rest } = prev.customTags || {};
-      return { ...prev, customTags: rest };
-    });
-    if (ntag === key) setNtag('dream');
-    showToast('Tag removed');
-  };
+  const filteredNotes = filterSubject === 'All' 
+    ? state.notes 
+    : state.notes.filter(n => (n.subject || 'General') === filterSubject);
 
-  const pinned = state.notes.filter(n => n.pinned);
+  const pinned = filteredNotes.filter(n => n.pinned);
 
   return (
     <div className={`page ${pos}`} id="p1">
       <div className="ntopbar">
-        <div><div className="ntl">{state.name}'s Collection</div><h2>My Private <em>Notes</em></h2></div>
+        <div><div className="ntl">{state.name}'s Knowledge Base</div><h2>Subject <em>Notes</em></h2></div>
       </div>
 
       <div className="ncompose">
         <textarea
-          placeholder={"Write a daily thought, a personal goal, or study notes... 📓\n\nCapture your ideas here."}
+          placeholder={`Write notes for ${activeSubject}... 📓`}
           value={nArea}
           onChange={e => setNArea(e.target.value)}
         />
         <div className="cfooter">
-          <div className="ctags">
-            {/* Default + custom tags */}
-            {Object.entries(allTags).map(([key, emoji]) => (
+          <div className="ctags" style={{ overflowX: 'auto', display: 'flex', gap: '8px', paddingBottom: '4px' }}>
+            {subjects.map((sub) => (
               <button
-                key={key}
-                className={`tpill ${ntag === key ? 'on' : ''}`}
-                onClick={() => setNtag(key)}
+                key={sub}
+                className={`tpill ${activeSubject === sub ? 'on' : ''}`}
+                onClick={() => setActiveSubject(sub)}
+                style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                {emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
-                {/* Delete custom tags */}
-                {key in customTags && (
-                  <span
-                    className="tag-del"
-                    onClick={e => { e.stopPropagation(); deleteCustomTag(key); }}
+                📚 {sub}
+                {sub !== 'General' && (
+                  <span 
+                    style={{ opacity: 0.5, fontSize: '10px', padding: '2px' }} 
+                    onClick={(e) => { e.stopPropagation(); removeSubject(sub); }}
                   >✕</span>
                 )}
               </button>
             ))}
-
-            {/* Add tag button */}
-            <button
-              className={`tpill add-tag-btn ${addingTag ? 'on' : ''}`}
-              onClick={() => { setAddingTag(v => !v); setTimeout(() => tagInputRef.current?.focus(), 100); }}
-            >
-              + Tag
-            </button>
+            <button className="tpill add-tag-btn" onClick={addSubject}>+ New Subject</button>
           </div>
           <button className="bsave" onClick={saveNote}>Save 💾</button>
         </div>
-
-        {/* Custom tag creator panel */}
-        {addingTag && (
-          <div className="tag-creator">
-            <div className="tag-creator-row">
-              {/* Emoji picker */}
-              <div className="tag-emoji-pick">{newTagEmoji}</div>
-              <input
-                ref={tagInputRef}
-                className="tag-name-inp"
-                placeholder="tag name..."
-                value={newTagName}
-                onChange={e => setNewTagName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveCustomTag()}
-                maxLength={16}
-              />
-              <button className="tag-save-btn" onClick={saveCustomTag}>Add</button>
-            </div>
-            {/* Emoji grid */}
-            <div className="tag-emoji-grid">
-              {EMOJI_OPTIONS.map(em => (
-                <button
-                  key={em}
-                  className={`tag-em-btn ${newTagEmoji === em ? 'on' : ''}`}
-                  onClick={() => setNewTagEmoji(em)}
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <SharedWhiteboard activeProfile={state} />
       <FocusTracker state={state} setState={setState} showToast={showToast} />
 
       <div className="sl">
-        <span className="sli">📍</span>
-        <h3>Pinned Notes</h3>
-        <span className="slc">{pinned.length}</span>
+        <span className="sli">🏷️</span>
+        <h3>Filter by Subject</h3>
       </div>
-      <div className="pgrid">
-        {!pinned.length ? (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '16px 0', color: 'var(--text-dim)', fontSize: '12px' }}>
-            Pin a note to see it here 📌
+      <div className="ctags" style={{ padding: '0 20px', marginBottom: '16px', overflowX: 'auto', display: 'flex', gap: '8px' }}>
+        <button className={`tpill ${filterSubject === 'All' ? 'on' : ''}`} onClick={() => setFilterSubject('All')}>All</button>
+        {subjects.map(sub => (
+          <button
+            key={sub}
+            className={`tpill ${filterSubject === sub ? 'on' : ''}`}
+            onClick={() => setFilterSubject(sub)}
+          >
+            {sub}
+          </button>
+        ))}
+      </div>
+
+      {pinned.length > 0 && (
+        <>
+          <div className="sl">
+            <span className="sli">📍</span>
+            <h3>Pinned in {filterSubject}</h3>
           </div>
-        ) : (
-          pinned.map((n, i) => (
-            <div key={n.id} className={`pc ${CLR[i % 4]}`} onClick={() => setViewNote(n)}>
-              <button className="pcdel" onClick={(e) => delNote(e, n.id)}>✕</button>
-              <div className="pct">{allTags[n.tag] || '🏷️'} {n.tag}</div>
-              <div className="pcc">{n.text}</div>
-              <div className="pcd">{n.date}</div>
-            </div>
-          ))
-        )}
-      </div>
+          <div className="pgrid">
+            {pinned.map((n, i) => (
+              <div key={n.id} className={`pc c${i%4}`} onClick={() => setViewNote(n)}>
+                <button className="pcdel" onClick={(e) => delNote(e, n.id)}>✕</button>
+                <div className="pct">📚 {n.subject || 'General'}</div>
+                <div className="pcc">{n.text}</div>
+                <div className="pcd">{n.date}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="sl">
         <span className="sli">📜</span>
-        <h3>All Notes</h3>
-        <span className="slc">{state.notes.length}</span>
+        <h3>{filterSubject} Notes</h3>
+        <span className="slc">{filteredNotes.length}</span>
       </div>
       <div id="nList" style={{ padding: '0 20px' }}>
-        {!state.notes.length ? (
+        {!filteredNotes.length ? (
           <div className="empty">
-            No notes captured yet...<br />Let's write our first page! ✍️
+            No notes in {filterSubject} yet...<br />Let's write something! ✍️
           </div>
         ) : (
-          state.notes.map(n => (
+          filteredNotes.map(n => (
             <div key={n.id} className="nli" onClick={() => setViewNote(n)}>
-              <div className="nlidot" style={{ background: getDotColor(n.tag) }}></div>
+              <div className="nlidot" style={{ background: DOT_COLORS[subjects.indexOf(n.subject || 'General') % DOT_COLORS.length] }}></div>
               <div className="nlib">
-                <div className="nliTag">{allTags[n.tag] || '🏷️'} {n.tag}</div>
+                <div className="nliTag">📚 {n.subject || 'General'}</div>
                 <div className="nlitxt">{n.text}</div>
                 <div className="nlidate">{n.date}</div>
               </div>
@@ -218,10 +184,10 @@ export default function NotesPage({ state, setState, active, pos, showToast }) {
             <div className="nmh"></div>
             <button className="nmclose" onClick={() => setViewNote(null)}>✕</button>
             <div style={{ fontSize: '13px', color: 'var(--secondary)', fontWeight: 700, marginBottom: '12px' }}>
-              {allTags[viewNote.tag] || '🏷️'} {viewNote.tag}
+              📚 {viewNote.subject || 'General'}
             </div>
             <div className="nmtxt" style={{ marginTop: '4px' }}>{viewNote.text}</div>
-            <div className="nmdate">From our collection — {viewNote.date}</div>
+            <div className="nmdate">Created on {viewNote.date}</div>
           </div>
         </div>
       )}

@@ -183,6 +183,33 @@ export default function ProgressPage({ state, setState, active, pos, showToast, 
         <span style={{ textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--primary)' }}>View Full Calendar</span>
       </button>
 
+      <button
+        className="gc"
+        style={{
+          width: '96%',
+          marginBottom: '32px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '14px',
+          padding: '16px',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5))',
+          border: '1px solid rgba(255,255,255,0.8)',
+          borderRadius: '24px',
+          color: 'var(--text)',
+          fontSize: '14px',
+          fontWeight: 800,
+          cursor: 'pointer',
+          margin:'10px'
+        }}
+        onClick={() => onGo(5)}
+      >
+        <div style={{ background: 'var(--surface-container-low)', width: '40px', height: '40px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          ⌛
+        </div>
+        <span style={{ textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--primary)' }}>Screen Time & Usage</span>
+      </button>
+
       {/* Partner & Connection Section */}
       <div className="sl"><span className="sli">💞</span><h3>Connection</h3></div>
       <div className="albx" style={{ width: '96%', margin: '10px', transform: 'none', position: 'relative', padding: '24px' }}>

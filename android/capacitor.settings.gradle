@@ -7,3 +7,6 @@ project(':capacitor-local-notifications').projectDir = new File('../node_modules
 
 include ':capgo-capacitor-alarm'
 project(':capgo-capacitor-alarm').projectDir = new File('../node_modules/@capgo/capacitor-alarm/android')
+
+include ':capgo-capacitor-android-usagestatsmanager'
+project(':capgo-capacitor-android-usagestatsmanager').projectDir = new File('../node_modules/@capgo/capacitor-android-usagestatsmanager/android')
